@@ -35,8 +35,9 @@ import { fileExistsAtPath } from "../../utils/fs"
 import { searchCommits } from "../../utils/git"
 import { getWorkspacePath } from "../../utils/path"
 import { getTotalTasksSize } from "../../utils/storage"
-import { openMention } from "../mentions"
-import { GlobalFileNames } from "../storage/disk"
+import { openMention } from "../mentions";
+import { GlobalFileNames } from "../storage/disk";
+import type { ClineMessage } from "../../shared/ExtensionMessage"; // Import ClineMessage type
 import {
 	getAllExtensionState,
 	getGlobalState,
@@ -55,11 +56,17 @@ https://github.com/KumarVariable/vscode-extension-sidebar-html/blob/master/src/c
 */
 
 export class Controller {
-	private postMessage: (message: ExtensionMessage) => Thenable<boolean> | undefined
+	private postMessage: (message: ExtensionMessage) => Thenable<boolean> | undefined;
 
-	private disposables: vscode.Disposable[] = []
-	private task?: Task
-	workspaceTracker: WorkspaceTracker
+	// --- New properties for External API ---
+	private readonly _messageUpdateEmitter = new vscode.EventEmitter<ClineMessage>();
+	private currentInputText: string = ''; // To store input text locally if needed (mainly for sendMessage fallback)
+	private userInputRequestResolver: ((value: string | null) => void) | null = null;
+	// --- End New properties ---
+
+	private disposables: vscode.Disposable[] = [];
+	private task?: Task;
+	workspaceTracker: WorkspaceTracker;
 	mcpHub: McpHub
 	accountService: ClineAccountService
 	private latestAnnouncementId = "april-11-2025" // update to some unique identifier when we add a new announcement
@@ -109,11 +116,17 @@ export class Controller {
 			}
 		}
 		this.workspaceTracker.dispose()
-		this.mcpHub.dispose()
-		this.outputChannel.appendLine("Disposed all disposables")
+		this.mcpHub.dispose();
+		this.outputChannel.appendLine("Disposed all disposables");
 
-		console.error("Controller disposed")
+		console.error("Controller disposed");
 	}
+
+	// --- New public getter for External API ---
+	public get onMessageUpdate(): vscode.Event<ClineMessage> {
+		return this._messageUpdateEmitter.event;
+	}
+	// --- End New public getter ---
 
 	// Auth methods
 	async handleSignOut() {
@@ -142,7 +155,20 @@ export class Controller {
 			this.workspaceTracker,
 			(historyItem) => this.updateTaskHistory(historyItem),
 			() => this.postStateToWebview(),
-			(message) => this.postMessageToWebview(message),
+			// Modify the message callback to also fire the event emitter (make it async)
+			async (message) => { // Added async here
+				await this.postMessageToWebview(message); // Added await here
+				// Fire the event for external listeners
+				// Ensure we only fire for relevant message types if needed, but for now fire all
+				if (message.type === 'state' && message.state?.clineMessages) {
+					// If it's a state update with messages, fire for each message
+					message.state.clineMessages.forEach(clineMsg => this._messageUpdateEmitter.fire(clineMsg));
+				} else if (message.type === 'partialMessage' && message.partialMessage) {
+					// If it's a partial message update
+					this._messageUpdateEmitter.fire(message.partialMessage);
+				}
+				// Potentially add more specific checks if needed
+			},
 			(taskId) => this.reinitExistingTaskFromId(taskId),
 			() => this.cancelTask(),
 			apiConfiguration,
@@ -176,6 +202,15 @@ export class Controller {
 	 */
 	async handleWebviewMessage(message: WebviewMessage) {
 		switch (message.type) {
+			// --- New case for External API ---
+			case 'userInputResponse':
+				if (this.userInputRequestResolver) {
+					this.userInputRequestResolver(message.value ?? null);
+					this.userInputRequestResolver = null; // Clear resolver after use
+				}
+				break;
+			// --- End New case ---
+
 			case "addRemoteServer": {
 				try {
 					await this.mcpHub?.addRemoteServer(message.serverName!, message.serverUrl!)
@@ -2102,6 +2137,172 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 		await this.postMessageToWebview({
 			type: "action",
 			action: "chatButtonClicked",
-		})
+		});
 	}
+
+	// --- New Public Methods for External API ---
+
+	/**
+	 * Handles retrieving the current input text from the webview.
+	 * Uses a request/response pattern due to async communication.
+	 */
+	public async handleGetUserInput(): Promise<string | null> {
+		if (!this.postMessage) {
+			console.error("[Controller] postMessage function not available for handleGetUserInput.");
+			return null;
+		}
+		if (this.userInputRequestResolver) {
+			console.warn("[Controller] Previous getUserInput request still pending.");
+			// Optionally cancel the previous one or just return null/error
+			return null;
+		}
+
+		return new Promise((resolve) => {
+			this.userInputRequestResolver = resolve;
+
+			// Send request to webview
+			this.postMessageToWebview({ type: 'getUserInput' }); // Webview needs to handle this type
+
+			// Set timeout to avoid hanging promises
+			setTimeout(() => {
+				if (this.userInputRequestResolver) {
+					console.warn("[Controller] getUserInput request timed out.");
+					this.userInputRequestResolver(null); // Resolve with null on timeout
+					this.userInputRequestResolver = null;
+				}
+			}, 2000); // 2-second timeout
+		});
+	}
+
+	/**
+	 * Handles setting the user input text in the webview.
+	 */
+	public handleSetUserInput(text: string): boolean {
+		try {
+			if (!this.postMessage) {
+				console.error("[Controller] postMessage function not available for handleSetUserInput.");
+				return false;
+			}
+			// Send message to webview to update input
+			this.postMessageToWebview({
+				type: 'setUserInput', // Webview needs to handle this type
+				value: text
+			});
+
+			// Update local state if controller maintains it (optional, mainly for sendMessage fallback)
+			this.currentInputText = text;
+			return true;
+		} catch (error) {
+			console.error('[Controller] Error setting user input:', error);
+			return false;
+		}
+	}
+
+	/**
+	 * Handles sending a message, potentially setting input text first.
+	 */
+	public handleSendMessage(text?: string): boolean {
+		try {
+			if (!this.postMessage) {
+				console.error("[Controller] postMessage function not available for handleSendMessage.");
+				return false;
+			}
+
+			let textToSend: string | undefined = text;
+
+			// If text is provided, first set the input
+			if (text !== undefined) {
+				const setResult = this.handleSetUserInput(text);
+				if (!setResult) {
+					console.error("[Controller] Failed to set user input before sending message.");
+					// Decide if we should proceed or return false. Let's proceed for now.
+				}
+				// textToSend is already set
+			} else {
+				// If no text provided, we will send undefined text to the 'invoke' message.
+				// The webview's sendMessage handler should use its current inputText state.
+				textToSend = undefined;
+				// We don't need to rely on this.currentInputText here.
+			}
+
+			// Trigger sending the message by simulating the webview 'invoke' message
+			// Webview's ExtensionStateContext handles 'invoke' -> 'sendMessage'
+			this.postMessageToWebview({
+				type: 'invoke',
+				invoke: 'sendMessage',
+				text: textToSend, // Send the text intended for the message, or undefined
+				// images: undefined // Assuming API doesn't handle images yet
+			});
+
+			// Clear local cache if text was explicitly provided and set
+			if (text !== undefined) {
+				this.currentInputText = '';
+			}
+			// If text was undefined, we don't clear local cache as we didn't use it.
+
+			return true;
+		} catch (error) {
+			console.error('[Controller] Error sending message:', error);
+			return false;
+		}
+	}
+
+
+	/**
+	 * Handles retrieving formatted system/assistant messages from the active task.
+	 */
+	public handleGetSystemMessages(): string | null {
+		try {
+			// Access the active Task to get messages
+			if (!this.task) {
+				console.warn("[Controller] No active task to get system messages from.");
+				return null;
+			}
+
+			// Extract system/assistant messages ('say' type) from the conversation
+			const systemMessages = this.task.clineMessages // Assuming Task exposes this
+				.filter(msg => msg.type === 'say' && typeof msg.text === 'string') // Filter for 'say' messages with text
+				.map(msg => msg.text) // Extract the text content
+				.join('\n\n'); // Join messages with double newline
+
+			return systemMessages || null; // Return null if empty string
+		} catch (error) {
+			console.error('[Controller] Error getting system messages:', error);
+			return null;
+		}
+	}
+
+	/**
+	 * Handles programmatically allowing a pending command in the active task.
+	 */
+	public handleAllowCommand(): boolean {
+		try {
+			// Find the pending command in the active task
+			if (!this.task) {
+				console.warn("[Controller] No active task to allow command for.");
+				return false;
+			}
+
+			// Check if Task has these methods - Add them if not
+			if (typeof this.task.hasPendingCommand !== 'function' || typeof this.task.approvePendingCommand !== 'function') {
+			    console.error("[Controller] Task class is missing required command approval methods (hasPendingCommand or approvePendingCommand).");
+			    return false;
+			}
+
+			if (!this.task.hasPendingCommand()) {
+				console.warn("[Controller] No pending command to allow.");
+				return false;
+			}
+
+			// Approve the command
+			this.task.approvePendingCommand();
+			console.log("[Controller] Pending command approved via API.");
+			return true;
+		} catch (error) {
+			console.error('[Controller] Error allowing command:', error);
+			return false;
+		}
+	}
+
+	// --- End New Public Methods ---
 }

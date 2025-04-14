@@ -2,12 +2,14 @@
 
 Allow external VSCode extensions to interact with the Cline chat interface.
 
-## Task Breakdown
+## Task Breakdown (Current Status: In Progress)
+
+**Summary:** The basic structure for the external API is set up, including the API class, export mechanism, Controller methods (stubs), webview context updates, and documentation. Key remaining tasks involve implementing the logic within the Controller/Task, ensuring webview components handle new messages, and adding tests.
 
 ### 1. Create External API Module & Class
 
--   [ ] Create file: `src/api/externalApi.ts`
--   [ ] Implement `ClineExternalApi` class structure (singleton pattern, methods, event emitter) as defined in `GOAL.md`:
+-   [x] Create file: `src/api/externalApi.ts`
+-   [x] Implement `ClineExternalApi` class structure (singleton pattern, methods, event emitter) as defined in `GOAL.md`:
     ```typescript
     import * as vscode from 'vscode';
     import { Controller } from '../core/controller';
@@ -53,322 +55,149 @@ Allow external VSCode extensions to interact with the Cline chat interface.
       private formatSystemMessage(message: any): string { /* implementation */ }
     }
     ```
--   [ ] Define a mechanism for `ClineExternalApi` to access/interact with the `Controller` instance via the `setController` method.
+-   [x] Define a mechanism for `ClineExternalApi` to access/interact with the `Controller` instance via the `setController` method. *(Implemented in `src/exports/index.ts`)*
 
-### 2. Expose API via Extension Activation
+### 2. Expose API via Existing Export Mechanism
 
--   [ ] Modify `src/extension.ts`:
-    -   [ ] Import `ClineExternalApi`.
-    -   [ ] Instantiate `ClineExternalApi` singleton and pass the `Controller` instance:
+-   [x] Modify `src/exports/index.ts`:
+    -   [x] Import `ClineExternalApi` from `../api/externalApi`.
+    -   [x] In the `createClineAPI` function, get the `ClineExternalApi` singleton instance.
+    -   [x] Call `externalApi.setController(sidebarController)` to link the API instance with the controller.
+    -   [x] Add a new property (e.g., `chat`) to the returned `api` object and assign the `externalApi` instance to it.
       ```typescript
-      export function activate(context: vscode.ExtensionContext) {
-        // Original extension activation code...
-        const controller = new Controller(context);
-        
-        // Initialize and expose the external API
-        const api = ClineExternalApi.getInstance();
-        api.setController(controller);
-        
-        // Export the API for other extensions to consume
-        return {
-          getApi: () => api
-        };
-      }
+      // Inside createClineAPI function...
+      const externalApi = ClineExternalApi.getInstance();
+      externalApi.setController(sidebarController); // Add error handling if needed
+
+      const api: ClineAPI = {
+        // ... existing methods ...
+
+        // Add the new API instance
+        chat: externalApi,
+      };
+      return api;
       ```
+-   [x] Modify `src/exports/cline.d.ts`:
+    -   [x] Import the `ClineExternalApi` type.
+    -   [x] Add the new `chat: ClineExternalApi;` property to the `ClineAPI` interface definition.
 
 ### 3. Implement API Logic in Controller
 
 -   [ ] Modify `src/core/controller/index.ts`:
-    -   [ ] Add reference/method to store/access the `ClineExternalApi` instance.
-    -   [ ] Add new public method `getCurrentInputText(): string` for retrieving the current input text:
-        ```typescript
-        public getCurrentInputText(): string {
-          // If controller maintains input state, return it
-          // Otherwise, we might need to implement a request/response with the webview
-          return this.currentInputText || '';
-        }
-        ```
-    -   [ ] Add new public method `handleSetUserInput(text: string): boolean`:
+    -   [-] Add reference/method to store/access the `ClineExternalApi` instance. *(Not strictly needed as API accesses Controller)*
+    -   [x] Add new public method `handleGetUserInput(): Promise<string | null>` for retrieving the current input text (uses request/response pattern).
+    -   [x] Add new public method `handleSetUserInput(text: string): boolean`:
         ```typescript
         public handleSetUserInput(text: string): boolean {
-          try {
-            // Send message to webview to update input
-            this.webviewProvider.postMessageToWebview({
-              type: 'setUserInput',
-              value: text
-            });
-            
-            // Update local state if controller maintains it
-            this.currentInputText = text;
-            return true;
-          } catch (error) {
-            console.error('Error setting user input:', error);
-            return false;
-          }
+          // ... implementation added ...
         }
         ```
-    -   [ ] Add new public method `handleSendMessage(text?: string): boolean`:
+    -   [x] Add new public method `handleSendMessage(text?: string): boolean`:
         ```typescript
         public handleSendMessage(text?: string): boolean {
-          try {
-            // If text is provided, first set the input
-            if (text !== undefined) {
-              this.handleSetUserInput(text);
-            }
-            
-            // Trigger sending the message - use the same code path
-            // as when a user clicks the send button
-            
-            // Either simulate a message from the webview:
-            this.handleWebviewMessage({
-              type: 'sendMessage',
-              content: text || this.currentInputText
-            });
-            
-            // Or directly call the task method:
-            // this.activeTask.submitUserMessage(text || this.currentInputText);
-            
-            return true;
-          } catch (error) {
-            console.error('Error sending message:', error);
-            return false;
-          }
+          // ... implementation added ...
         }
         ```
-    -   [ ] Add new public method `handleGetSystemMessages(): string | null`:
+    -   [x] Add new public method `handleGetSystemMessages(): string | null`:
         ```typescript
         public handleGetSystemMessages(): string | null {
-          try {
-            // Access the active Task to get messages
-            if (!this.activeTask) return null;
-            
-            // Extract system/assistant messages from the conversation
-            const systemMessages = this.activeTask.getClineMessages()
-              .filter(msg => msg.role === 'assistant' || msg.role === 'system')
-              .map(msg => this.formatMessage(msg))
-              .join('\n\n');
-            
-            return systemMessages;
-          } catch (error) {
-            console.error('Error getting system messages:', error);
-            return null;
-          }
-        }
-        
-        private formatMessage(message: any): string {
-          // Format message based on Cline's structure
-          return message.content;
+          // ... implementation added ...
         }
         ```
-    -   [ ] Add new public method `handleAllowCommand(): boolean`:
+    -   [x] Add new public method `handleAllowCommand(): boolean`: *(Requires `hasPendingCommand` and `approvePendingCommand` in Task)*
         ```typescript
         public handleAllowCommand(): boolean {
-          try {
-            // Find the pending command in the active task
-            if (!this.activeTask || !this.activeTask.hasPendingCommand()) {
-              return false;
-            }
-            
-            // Approve the command
-            this.activeTask.approvePendingCommand();
-            // Or possibly:
-            // this.handleWebviewMessage({ type: 'allowCommand' });
-            
-            return true;
-          } catch (error) {
-            console.error('Error allowing command:', error);
-            return false;
-          }
+          // ... implementation added ...
         }
         ```
-    -   [ ] Implement notification logic for `onSystemMessageUpdate`:
+    -   [x] Implement notification logic for `onSystemMessageUpdate`:
         ```typescript
-        // Add an event emitter to Controller class
-        private readonly messageUpdateEmitter = new vscode.EventEmitter<any>();
-        
-        // Add accessor method
-        public get onMessageUpdate(): vscode.Event<any> {
-          return this.messageUpdateEmitter.event;
-        }
-        
-        // In the method where messages are added/updated, emit the event:
-        private addMessage(message: any): void {
-          // Existing logic to add message
-          
-          // Emit the update event
-          this.messageUpdateEmitter.fire(message);
-        }
+        // Added _messageUpdateEmitter property
+        // Added onMessageUpdate getter
+        // Modified Task constructor callback to fire emitter
         ```
+    -   [x] Add handler for `userInputResponse` message from webview.
+    -   [ ] **NEXT:** Implement `hasPendingCommand` and `approvePendingCommand` in `src/core/task/index.ts`.
 
 ### 4. Update Webview State Management (ExtensionStateContext)
 
--   [ ] Modify `webview-ui/src/context/ExtensionStateContext.tsx`:
-    -   [ ] In the `message` event listener, add cases to handle new message types from the `Controller`:
+-   [x] Modify `webview-ui/src/context/ExtensionStateContext.tsx`:
+    -   [x] In the `message` event listener, add cases to handle new message types from the `Controller`:
         ```typescript
-        window.addEventListener('message', (event) => {
-          const message = event.data;
-          
-          switch (message.type) {
-            // Existing cases...
-            
-            // New case for setting user input from the API
-            case 'setUserInput':
-              setInputText(message.value);
-              break;
-              
-            // Handle any other API-related messages
-          }
-        });
+        // Added cases for 'setUserInput' and 'getUserInput'
         ```
-    -   [ ] Ensure the context provides access to the necessary state and functions:
+    -   [x] Ensure the context provides access to the necessary state and functions:
         ```typescript
-        const contextValue = {
-          // Existing values...
-          inputText,
-          setInputText,
-          sendMessage: (text?: string) => {
-            const messageToSend = text || inputText;
-            // Existing send message logic...
-            vscode.postMessage({ type: 'sendMessage', content: messageToSend });
-            setInputText('');
-          },
-          allowCommand: () => {
-            // Existing allow command logic...
-            vscode.postMessage({ type: 'allowCommand' });
-          }
-        };
+        // Added inputText, setInputText, sendMessage, allowCommand to context value
         ```
+    -   [x] Update shared message types (`WebviewMessage`, `ExtensionMessage`) with new types/properties (`userInputResponse`, `getUserInput`, `setUserInput`, `value`, `invoke`).
+    -   [ ] **NEXT:** Ensure webview components correctly use `inputText`, `setInputText`, `sendMessage`, `allowCommand` from context.
 
 ### 5. Update Webview UI Components
 
--   [ ] Identify the chat input component (`webview-ui/src/components/...`):
-    -   [ ] Verify its value is controlled by the state managed in `ExtensionStateContext`.
-    -   [ ] Check that it correctly updates when the `setInputText` function is called.
--   [ ] Identify the message display component (`webview-ui/src/components/...`):
-    -   [ ] Verify it correctly renders messages based on `ExtensionStateContext` state.
-    -   [ ] Ensure messages have consistent structure for the `getSystemMessages` implementation.
--   [ ] Identify the component containing the "allow command" button:
-    -   [ ] Verify its action triggers the correct notification to the `Controller` via `ExtensionStateContext`.
-    -   [ ] Ensure the function can be called programmatically for the `allowCommand` API feature.
+-   [ ] **NEXT:** Identify the chat input component (`webview-ui/src/components/...`):
+    -   [ ] Verify its value is controlled by `inputText` from `ExtensionStateContext`.
+    -   [ ] Verify it calls `setInputText` on change.
+    -   [ ] Verify the "send" action calls `sendMessage` from context.
+-   [ ] **NEXT:** Identify the message display component (`webview-ui/src/components/...`):
+    -   [ ] Verify it correctly renders messages based on `clineMessages` from `ExtensionStateContext`.
+    -   [ ] Ensure message structure is consistent for `handleGetSystemMessages`.
+-   [ ] **NEXT:** Identify the component containing the "allow command" button:
+    -   [ ] Verify its action calls `allowCommand` from context (or sends appropriate message).
 
 ### 6. Update package.json
 
--   [ ] Modify `package.json`:
-    -   [ ] Add API declaration to indicate this extension provides an API:
+-   [x] Modify `package.json`:
+    -   [x] Add API declaration (`"api": "1.0.0"`) to indicate this extension provides an API:
         ```json
-        {
-          "name": "cline",
-          "displayName": "Cline: AI Coding Assistant with External API",
-          "description": "AI coding assistant with integrations for external extensions",
-          "version": "1.0.0",
-          "api": "1.0.0",
-          // Other existing fields...
-        }
+        // ...
+        "version": "3.12.2",
+        "api": "1.0.0",
+        // ...
         ```
 
 ### 7. Documentation
 
--   [ ] Create API documentation file (e.g., `docs/api/external-api.md`):
+-   [x] Create API documentation file (`docs/api/external-api.md`):
     ```markdown
     # Cline External API Documentation
-    
-    This document describes the API exposed by Cline for other VSCode extensions.
-    
-    ## Accessing the API
-    
-    ```typescript
-    // In your extension's activation function
-    export async function activate(context: vscode.ExtensionContext) {
-      // Get the Cline extension API
-      const clineExtension = vscode.extensions.getExtension('your-username.cline');
-      
-      if (clineExtension) {
-        const cline = await clineExtension.activate();
-        const api = cline.getApi();
-        
-        // Now you can use the API methods
-      }
-    }
+    // ... content added ...
     ```
-    
-    ## API Methods
-    
-    - `getUserInputText(): string | null` - Get the current text in the input field
-    - `setUserInputText(text: string): boolean` - Set text in the input field
-    - `sendMessage(text?: string): boolean` - Send a message, optionally setting text first
-    - `getSystemMessages(): string | null` - Get the current system messages
-    - `allowCommand(): boolean` - Programmatically allow a pending command
-    
-    ## Events
-    
-    - `onSystemMessageUpdate: vscode.Event<string>` - Fired when system messages update
-    ```
--   [ ] Update `README.md` to reference the new API documentation.
+-   [x] Update `README.md` to reference the new API documentation.
 
 ### 8. Testing
 
--   [ ] Create a simple separate test VSCode extension project:
-    ```typescript
-    // Example extension that uses the Cline API
-    import * as vscode from 'vscode';
-    
-    export function activate(context: vscode.ExtensionContext) {
-      // Register a command to test the API
-      let disposable = vscode.commands.registerCommand('cline-test.testApi', async () => {
-        // Get the Cline extension API
-        const clineExtension = vscode.extensions.getExtension('your-username.cline');
-        
-        if (!clineExtension) {
-          vscode.window.showErrorMessage('Cline extension not found.');
-          return;
-        }
-        
-        // Activate the extension and get the API
-        if (!clineExtension.isActive) {
-          await clineExtension.activate();
-        }
-        
-        const api = clineExtension.exports.getApi();
-        
-        // Test setting input text
-        api.setUserInputText('Hello from the test extension!');
-        
-        // Subscribe to system message updates
-        const disposable = api.onSystemMessageUpdate((message) => {
-          console.log('System message:', message);
-        });
-        context.subscriptions.push(disposable);
-        
-        // Other API tests...
-      });
-      
-      context.subscriptions.push(disposable);
-    }
-    ```
--   [ ] Add unit/integration tests within the Cline project (`src/test/...`):
-    -   [ ] Test the new methods added to the `Controller`.
+-   [ ] **NEXT:** Create a simple separate test VSCode extension project:
+-   [ ] **NEXT:** Add unit/integration tests within the Cline project (`src/test/...`):
+    -   [ ] Test the new methods added to the `Controller` (`handleGetUserInput`, `handleSetUserInput`, `handleSendMessage`, `handleGetSystemMessages`, `handleAllowCommand`).
     -   [ ] Test the `ClineExternalApi` class methods (with mocked `Controller`).
-    -   [ ] Test the webview message handling for API-related operations.
+    -   [ ] Test the webview message handling (`setUserInput`, `getUserInput` -> `userInputResponse`).
 
 ### 9. Error Handling and Edge Cases
 
--   [ ] Implement proper error handling in all API methods:
-    -   [ ] Check for missing controller reference
-    -   [ ] Handle cases where no chat is active
-    -   [ ] Gracefully handle situations where commands can't be allowed
-    -   [ ] Implement timeouts for async operations
--   [ ] Add logging for debugging purposes:
+-   [ ] **NEXT:** Implement proper error handling in all API methods:
+    -   [x] Check for missing controller reference *(Added in `ClineExternalApi`)*
+    -   [x] Handle cases where no chat is active *(Added basic checks in `Controller` methods)*
+    -   [x] Gracefully handle situations where commands can't be allowed *(Added basic checks in `Controller` methods)*
+    -   [x] Implement timeouts for async operations *(Added for `handleGetUserInput`)*
+-   [x] Add logging for debugging purposes: *(Added basic logs)*
     ```typescript
-    // Example logging helper in ClineExternalApi
-    private log(message: string, ...args: any[]): void {
-      console.log(`[ClineExternalApi] ${message}`, ...args);
-    }
+    // Added basic console.log/warn/error in relevant places
     ```
 
+### Notes for Next Session
 
-    # Potential Implementation Challenges and Solutions
+*   Focus on implementing `hasPendingCommand` and `approvePendingCommand` in `src/core/task/index.ts`.
+*   Verify webview components in `webview-ui/src/components/...` correctly interact with the updated `ExtensionStateContext` (input field, send button, allow button).
+*   Address the TypeScript errors related to missing Node/VSCode/other module types (likely requires `npm install` or `tsconfig.json` review in both root and `webview-ui`).
+*   Begin implementing unit tests for the new Controller methods and the External API class.
+*   Consider creating the separate test extension project.
+*   Refine error handling and edge case management in Controller/API methods.
 
-Based on the architecture of Cline and the requirements for the external API, here are some challenges you might encounter and recommended solutions:
+
+# Potential Implementation Challenges and Solutions
+
+*(Original content kept below for reference)*
 
 ## 1. Asynchronous Communication Between Extension and Webview
 

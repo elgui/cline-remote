@@ -54,9 +54,18 @@ graph TD
 ## Key Components for External API Implementation
 
 1.  **`src/extension.ts` (Extension Entry):**
-    *   Needs to be modified to instantiate and export the new `ClineExternalApi` instance, making it discoverable by other extensions using `vscode.extensions.getExtension(...).activate()`.
+    *   Continues to use the `createClineAPI` function from `src/exports/index.ts` to export the extension's API. The `activate` function passes the necessary `Controller` instance to `createClineAPI`.
 
-2.  **`src/core/controller/index.ts` (Controller):**
+2.  **`src/exports/index.ts` (API Export):**
+    *   The `createClineAPI` function is modified to:
+        1.  Import and instantiate the `ClineExternalApi` singleton.
+        2.  Link it with the provided `Controller` instance using `setController`.
+        3.  Add the `ClineExternalApi` instance as a property (e.g., `chat`) to the returned `ClineAPI` object, alongside existing exported methods.
+
+3.  **`src/exports/cline.d.ts` (API Type Definition):**
+    *   The `ClineAPI` interface is updated to include the new `chat` property, typed as `ClineExternalApi`.
+
+4.  **`src/core/controller/index.ts` (Controller):**
     *   The central hub for handling API requests from the `ClineExternalApi`.
     *   Will need new methods to handle actions like `setUserInputText`, `sendMessage`, `getSystemMessages`, `allowCommand`.
     *   Responsible for interacting with the active `Task` instance to retrieve state (like system messages from `clineMessages`) or trigger actions.
@@ -89,7 +98,7 @@ graph TD
 
 Interactions initiated by an external extension via the `ClineExternalApi` will typically follow this path:
 
-`External Extension` -> `ClineExternalApi` -> `Controller` -> (`WebviewProvider` -> `ExtensionStateContext` -> `UI Component`) OR (`Task` for state/actions)
+`External Extension` -> Accesses `ClineAPI` object exported by `activate` -> Accesses `api.chat` (the `ClineExternalApi` instance) -> `ClineExternalApi` methods -> `Controller` -> (`WebviewProvider` -> `ExtensionStateContext` -> `UI Component`) OR (`Task` for state/actions)
 
 Updates originating from Cline (like new system messages) would flow:
 

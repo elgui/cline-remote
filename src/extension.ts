@@ -3,7 +3,8 @@
 import { setTimeout as setTimeoutPromise } from "node:timers/promises"
 import * as vscode from "vscode"
 import { Logger } from "./services/logging/Logger"
-import { createClineAPI } from "./exports"
+import { createClineAPI } from "./exports" // Restore usage
+// import { ClineExternalApi } from "./api/externalApi" // Remove import from here
 import "./utils/path" // necessary to have access to String.prototype.toPosix
 import { DIFF_VIEW_URI_SCHEME } from "./integrations/editor/DiffViewProvider"
 import assert from "node:assert"
@@ -402,6 +403,7 @@ export function activate(context: vscode.ExtensionContext) {
 		createTestServer(sidebarWebview)
 	}
 
+	// Use the existing export function
 	return createClineAPI(outputChannel, sidebarWebview.controller)
 }
 

@@ -1,3 +1,5 @@
+import { ClineExternalApi } from "../api/externalApi"; // Import the type
+
 export interface ClineAPI {
 	/**
 	 * Sets the custom instructions in the global storage.
@@ -34,4 +36,9 @@ export interface ClineAPI {
 	 * Simulates pressing the secondary button in the chat interface.
 	 */
 	pressSecondaryButton(): Promise<void>
+
+	/**
+	 * Access the external chat interaction API.
+	 */
+	chat: ClineExternalApi;
 }

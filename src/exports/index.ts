@@ -1,12 +1,26 @@
-import * as vscode from "vscode"
-import { Controller } from "../core/controller"
-import { ClineAPI } from "./cline"
-import { getGlobalState } from "../core/storage/state"
+import * as vscode from "vscode";
+import { Controller } from "../core/controller";
+import { ClineAPI } from "./cline"; // This will need updating
+import { getGlobalState } from "../core/storage/state";
+import { ClineExternalApi } from "../api/externalApi"; // Import the new API class
+import { Logger } from "../services/logging/Logger"; // Import Logger
 
 export function createClineAPI(outputChannel: vscode.OutputChannel, sidebarController: Controller): ClineAPI {
+	// Instantiate and configure the new external API
+	const externalApi = ClineExternalApi.getInstance();
+	try {
+		externalApi.setController(sidebarController);
+		Logger.log("ClineExternalApi initialized within createClineAPI");
+	} catch (error) {
+		// Log error if controller setup fails (e.g., if onMessageUpdate doesn't exist yet)
+		Logger.log(`Error setting controller for ClineExternalApi: ${error}`);
+		// Depending on severity, might want to throw or handle differently
+	}
+
 	const api: ClineAPI = {
+		// --- Existing API Methods ---
 		setCustomInstructions: async (value: string) => {
-			await sidebarController.updateCustomInstructions(value)
+			await sidebarController.updateCustomInstructions(value);
 			outputChannel.appendLine("Custom instructions set")
 		},
 
@@ -60,7 +74,11 @@ export function createClineAPI(outputChannel: vscode.OutputChannel, sidebarContr
 				invoke: "secondaryButtonClick",
 			})
 		},
-	}
 
-	return api
+		// --- New External Chat API ---
+		// Expose the new API instance under a specific property
+		chat: externalApi,
+	};
+
+	return api;
 }

@@ -81,8 +81,10 @@ export interface WebviewMessage {
 		| "getRelativePaths" // Handles single and multiple URI resolution
 		| "searchFiles"
 		| "toggleFavoriteModel"
+		| "userInputResponse" // Response from webview with current input value
 	// | "relaunchChromeDebugMode"
 	text?: string
+	value?: string // Used for userInputResponse
 	uris?: string[] // Used for getRelativePaths
 	disabled?: boolean
 	askResponse?: ClineAskResponse
@@ -117,9 +119,11 @@ export interface WebviewMessage {
 	query?: string
 	// For toggleFavoriteModel
 	modelId?: string
+	// For invoke messages from context
+	invoke?: "sendMessage" | "primaryButtonClick" | "secondaryButtonClick"
 }
 
-export type ClineAskResponse = "yesButtonClicked" | "noButtonClicked" | "messageResponse"
+export type ClineAskResponse = "yesButtonClicked" | "noButtonClicked" | "messageResponse";
 
 export type ClineCheckpointRestore = "task" | "workspace" | "taskAndWorkspace"
 
