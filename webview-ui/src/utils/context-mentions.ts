@@ -1,6 +1,19 @@
 import { mentionRegex } from "@shared/context-mentions"
 import { Fzf } from "fzf"
-import * as path from "path"
+
+// Helper function to get basename in a browser-compatible way
+function getBasename(filePath: string): string {
+	// Remove trailing slashes if any
+	const cleanedPath = filePath.replace(/\/+$/, "")
+	// Find the last slash
+	const lastSlashIndex = cleanedPath.lastIndexOf("/")
+	// If no slash, the whole string is the basename
+	if (lastSlashIndex === -1) {
+		return cleanedPath
+	}
+	// Otherwise, return the part after the last slash
+	return cleanedPath.substring(lastSlashIndex + 1)
+}
 
 export interface SearchResult {
 	path: string
@@ -193,7 +206,7 @@ export function getContextMenuOptions(
 		const item = {
 			type: result.type === "folder" ? ContextMenuOptionType.Folder : ContextMenuOptionType.File,
 			value: formattedPath,
-			label: result.label || path.basename(result.path),
+			label: result.label || getBasename(result.path), // Use browser-compatible helper
 			description: formattedPath,
 		}
 		return item

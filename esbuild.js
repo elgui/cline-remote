@@ -94,13 +94,38 @@ const extensionConfig = {
 	external: ["vscode"],
 }
 
+// Config for integration tests
+const testSuiteConfig = {
+	...extensionConfig, // Inherit base settings
+	entryPoints: ["src/test/suite/index.ts"],
+	outfile: "dist/test/suite/index.js",
+	// Remove plugins not needed for tests, or adjust if necessary
+	// Keeping problem matcher and alias plugin for now
+	plugins: [
+		esbuildProblemMatcherPlugin,
+		{
+			name: "alias-plugin",
+			setup(build) {
+				build.onResolve({ filter: /^pkce-challenge$/ }, (args) => {
+					return { path: require.resolve("pkce-challenge/dist/index.browser.js") }
+				})
+			},
+		},
+	],
+}
+
 async function main() {
 	const extensionCtx = await esbuild.context(extensionConfig)
+	const testSuiteCtx = await esbuild.context(testSuiteConfig) // Create context for tests
+
 	if (watch) {
 		await extensionCtx.watch()
+		await testSuiteCtx.watch() // Watch tests as well
 	} else {
 		await extensionCtx.rebuild()
+		await testSuiteCtx.rebuild() // Build tests as well
 		await extensionCtx.dispose()
+		await testSuiteCtx.dispose() // Dispose test context
 	}
 }
 

@@ -36,7 +36,7 @@ interface ExtensionStateContextType extends ExtensionState {
 	setPlanActSeparateModelsSetting: (value: boolean) => void
 	// Add methods needed for API interaction
 	inputText: string
-	setInputText: (text: string) => void
+	setInputText: React.Dispatch<React.SetStateAction<string>> // Use React's type for state setters
 	sendMessage: (text?: string, images?: string[]) => void
 	allowCommand: () => void
 }

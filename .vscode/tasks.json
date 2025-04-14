@@ -97,7 +97,25 @@
 			"type": "npm",
 			"script": "watch:esbuild",
 			"group": "build",
-			"problemMatcher": "$esbuild-watch",
+			"problemMatcher": {
+				"owner": "esbuild-watch",
+				"severity": "error",
+				"pattern": [
+					{
+						"regexp": "^\\s+>\\s+(.*):(\\d+):(\\d+):\\s+(error|warning):\\s+(.*)$",
+						"file": 1,
+						"line": 2,
+						"column": 3,
+						"severity": 4,
+						"message": 5
+					}
+				],
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": "^\\s*\\[watch\\] build started",
+					"endsPattern": "^\\s*\\[watch\\] build finished"
+				}
+			},
 			"isBackground": true,
 			"label": "npm: watch:esbuild",
 			"presentation": {
@@ -115,7 +133,25 @@
 			"type": "npm",
 			"script": "watch:esbuild:test",
 			"group": "build",
-			"problemMatcher": "$esbuild-watch",
+			"problemMatcher": {
+				"owner": "esbuild-watch-test", // Use a different owner name to avoid potential conflicts
+				"severity": "error",
+				"pattern": [
+					{
+						"regexp": "^\\s+>\\s+(.*):(\\d+):(\\d+):\\s+(error|warning):\\s+(.*)$",
+						"file": 1,
+						"line": 2,
+						"column": 3,
+						"severity": 4,
+						"message": 5
+					}
+				],
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": "^\\s*\\[watch\\] build started",
+					"endsPattern": "^\\s*\\[watch\\] build finished"
+				}
+			},
 			"isBackground": true,
 			"label": "npm: watch:esbuild:test",
 			"presentation": {

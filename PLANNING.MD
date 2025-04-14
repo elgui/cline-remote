@@ -141,3 +141,8 @@ Alternatively, use the "Extension Tests" launch configuration added to `.vscode/
 This command uses `mocha` with the specific `tsconfig.unit-test.json` configuration. Ensure dependencies are installed (`npm install`) before running.
 
 **Note on `toPosix`:** The `String.prototype.toPosix` method was refactored into an exported function `toPosix` in `src/utils/path.ts` to resolve unit test compilation errors. All call sites using `.toPosix()` have been updated to use `toPosix(...)` and import the function. This refactoring was necessary because prototype modifications don't reliably load in the Node.js test environment used by Mocha.
+
+## Webview Development Notes (Learnings from Build Fixes)
+
+*   **React State Setter Typing:** When exposing React state setters (like `setInputText`) through context (`ExtensionStateContext.tsx`), ensure they are typed correctly using `React.Dispatch<React.SetStateAction<T>>`. This allows components consuming the context to use both direct value setting and functional updates (`(prevState) => newState`). Incorrect typing (e.g., `(value: T) => void`) can lead to TypeScript errors (like TS2345) when functional updates are attempted.
+*   **Browser Compatibility:** Avoid using Node.js built-in modules (e.g., `path`) directly within the `webview-ui/` codebase. These modules are not available in the browser environment where the webview runs. Using them will likely cause build errors (e.g., Vite externalization warnings/errors). Replace such usage with browser-compatible alternatives or custom helper functions (as done for `path.basename` in `webview-ui/src/utils/context-mentions.ts`).
