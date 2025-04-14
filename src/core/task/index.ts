@@ -55,7 +55,7 @@ import { DEFAULT_LANGUAGE_SETTINGS, getLanguageKey, LanguageDisplay } from "../.
 import { ClineAskResponse, ClineCheckpointRestore } from "../../shared/WebviewMessage"
 import { calculateApiCostAnthropic } from "../../utils/cost"
 import { fileExistsAtPath } from "../../utils/fs"
-import { arePathsEqual, getReadablePath } from "../../utils/path"
+import { arePathsEqual, getReadablePath, toPosix } from "../../utils/path"
 import { fixModelHtmlEscaping, removeInvalidChars } from "../../utils/string"
 import { AssistantMessageContent, parseAssistantMessage, ToolParamName, ToolUseName } from ".././assistant-message"
 import { constructNewFileContent } from ".././assistant-message/diff"
@@ -804,7 +804,7 @@ export class Task {
 		await this.say(
 			"error",
 			`Cline tried to use ${toolName}${
-				relPath ? ` for '${relPath.toPosix()}'` : ""
+				relPath ? ` for '${toPosix(relPath)}'` : ""
 			} without value for required parameter '${paramName}'. Retrying...`,
 		)
 		return formatResponse.toolError(formatResponse.missingToolParameterError(paramName))
@@ -3548,7 +3548,7 @@ export class Task {
 		// Filter paths through clineIgnoreController
 		const allowedVisibleFiles = this.clineIgnoreController
 			.filterPaths(visibleFilePaths)
-			.map((p) => p.toPosix())
+			.map((p) => toPosix(p))
 			.join("\n")
 
 		if (allowedVisibleFiles) {
@@ -3567,7 +3567,7 @@ export class Task {
 		// Filter paths through clineIgnoreController
 		const allowedOpenTabs = this.clineIgnoreController
 			.filterPaths(openTabPaths)
-			.map((p) => p.toPosix())
+			.map((p) => toPosix(p))
 			.join("\n")
 
 		if (allowedOpenTabs) {
@@ -3688,7 +3688,7 @@ export class Task {
 		details += `\n\n# Current Time\n${formatter.format(now)} (${timeZone}, UTC${timeZoneOffsetStr})`
 
 		if (includeFileDetails) {
-			details += `\n\n# Current Working Directory (${cwd.toPosix()}) Files\n`
+			details += `\n\n# Current Working Directory (${toPosix(cwd)}) Files\n`
 			const isDesktop = arePathsEqual(cwd, path.join(os.homedir(), "Desktop"))
 			if (isDesktop) {
 				// don't want to immediately access desktop since it would show permission popup
@@ -3739,4 +3739,34 @@ export class Task {
 
 		return `<environment_details>\n${details.trim()}\n</environment_details>`
 	}
+
+	// --- Methods for External API ---
+
+	/**
+	 * Checks if the task is currently awaiting user approval for a command execution.
+	 * @returns True if a command is pending approval, false otherwise.
+	 */
+	public hasPendingCommand(): boolean {
+		const lastMessage = this.clineMessages.at(-1)
+		const isPendingCommandAsk =
+			lastMessage?.type === "ask" && (lastMessage.ask === "command" || lastMessage.ask === "command_output")
+
+		// A command is pending if the last message was a command ask and no response has been received yet
+		return isPendingCommandAsk && this.askResponse === undefined
+	}
+
+	/**
+	 * Programmatically approves a pending command execution request.
+	 * Sets the internal state as if the user clicked the "Yes" button.
+	 * @returns True if a pending command was successfully approved, false otherwise.
+	 */
+	public approvePendingCommand(): boolean {
+		if (this.hasPendingCommand()) {
+			this.askResponse = "yesButtonClicked"
+			// The pWaitFor loop in the 'ask' method will detect this change and proceed.
+			return true
+		}
+		return false
+	}
+	// --- End Methods for External API ---
 }

@@ -38,7 +38,17 @@ interface ChatViewProps {
 export const MAX_IMAGES_PER_MESSAGE = 20 // Anthropic limits to 20 images
 
 const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryView }: ChatViewProps) => {
-	const { version, clineMessages: messages, taskHistory, apiConfiguration, telemetrySetting } = useExtensionState()
+	// Get state and functions from context, including input-related ones
+	const {
+		version,
+		clineMessages: messages,
+		taskHistory,
+		apiConfiguration,
+		telemetrySetting,
+		inputText, // Use context state for input value
+		setInputText, // Use context setter for input value
+		sendMessage, // Use context function for sending messages
+	} = useExtensionState()
 
 	//const task = messages.length > 0 ? (messages[0].say === "task" ? messages[0] : undefined) : undefined) : undefined
 	const task = useMemo(() => messages.at(0), [messages]) // leaving this less safe version here since if the first message is not a task, then the extension is in a bad state and needs to be debugged (see Cline.abort)
@@ -60,10 +70,11 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		return getTotalTokensFromApiReqMessage(lastApiReqMessage)
 	}, [modifiedMessages])
 
-	const [inputValue, setInputValue] = useState("")
+	// Remove local state for inputValue - now managed by context
+	// const [inputValue, setInputValue] = useState("")
 	const textAreaRef = useRef<HTMLTextAreaElement>(null)
 	const [textAreaDisabled, setTextAreaDisabled] = useState(false)
-	const [selectedImages, setSelectedImages] = useState<string[]>([])
+	const [selectedImages, setSelectedImages] = useState<string[]>([]) // Keep local state for selected images
 
 	// we need to hold on to the ask because useEffect > lastMessage will always let us know when an ask comes in and handle it, but by the time handleMessage is called, the last message might not be the ask anymore (it could be a say that followed)
 	const [clineAsk, setClineAsk] = useState<ClineAsk | undefined>(undefined)
@@ -210,7 +221,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 						case "api_req_started":
 							if (secondLastMessage?.ask === "command_output") {
 								// if the last ask is a command_output, and we receive an api_req_started, then that means the command has finished and we don't need input from the user anymore (in every other case, the user has to interact with input field or buttons to continue, which does the following automatically)
-								setInputValue("")
+								// setInputValue("") // No longer needed, context handles input
 								setTextAreaDisabled(true)
 								setSelectedImages([])
 								setClineAsk(undefined)
@@ -284,6 +295,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		return false
 	}, [modifiedMessages, clineAsk, enableButtons, primaryButtonText])
 
+	// This function is now primarily used by the 'invoke' message handler
 	const handleSendMessage = useCallback(
 		(text: string, images: string[]) => {
 			text = text.trim()
@@ -314,7 +326,8 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 						// there is no other case that a textfield should be enabled
 					}
 				}
-				setInputValue("")
+				// Do not reset inputText here, context manages it.
+				// setInputValue("") // REMOVED
 				setTextAreaDisabled(true)
 				setSelectedImages([])
 				setClineAsk(undefined)
@@ -324,7 +337,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 				disableAutoScrollRef.current = false
 			}
 		},
-		[messages.length, clineAsk],
+		[messages.length, clineAsk], // Removed setInputValue dependency
 	)
 
 	const startNewTask = useCallback(() => {
@@ -360,8 +373,8 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 							askResponse: "yesButtonClicked",
 						})
 					}
-					// Clear input state after sending
-					setInputValue("")
+					// Clear input state after sending - context handles inputText
+					// setInputValue("") // REMOVED
 					setSelectedImages([])
 					break
 				case "completion_result":
@@ -384,7 +397,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 			// setSecondaryButtonText(undefined)
 			disableAutoScrollRef.current = false
 		},
-		[clineAsk, startNewTask, lastMessage],
+		[clineAsk, startNewTask, lastMessage], // Removed setInputValue dependency
 	)
 
 	const handleSecondaryButtonClick = useCallback(
@@ -420,8 +433,8 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 							askResponse: "noButtonClicked",
 						})
 					}
-					// Clear input state after sending
-					setInputValue("")
+					// Clear input state after sending - context handles inputText
+					// setInputValue("") // REMOVED
 					setSelectedImages([])
 					break
 			}
@@ -432,7 +445,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 			// setSecondaryButtonText(undefined)
 			disableAutoScrollRef.current = false
 		},
-		[clineAsk, startNewTask, isStreaming],
+		[clineAsk, startNewTask, isStreaming], // Removed setInputValue dependency
 	)
 
 	const handleTaskCloseButtonClick = useCallback(() => {
@@ -470,7 +483,8 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 					}
 					break
 				case "addToInput":
-					setInputValue((prevValue) => {
+					// Use context setter to add text
+					setInputText((prevValue) => {
 						const newText = message.text ?? ""
 						const newTextWithNewline = newText + "\n"
 						return prevValue ? `${prevValue}\n${newTextWithNewline}` : newTextWithNewline
@@ -487,6 +501,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 				case "invoke":
 					switch (message.invoke!) {
 						case "sendMessage":
+							// Use the local handler for invoke, as it handles specific states
 							handleSendMessage(message.text ?? "", message.images ?? [])
 							break
 						case "primaryButtonClick":
@@ -499,7 +514,15 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 			}
 			// textAreaRef.current is not explicitly required here since react guarantees that ref will be stable across re-renders, and we're not using its value but its reference.
 		},
-		[isHidden, textAreaDisabled, enableButtons, handleSendMessage, handlePrimaryButtonClick, handleSecondaryButtonClick],
+		[
+			isHidden,
+			textAreaDisabled,
+			enableButtons,
+			handleSendMessage,
+			handlePrimaryButtonClick,
+			handleSecondaryButtonClick,
+			setInputText, // Added dependency
+		],
 	)
 
 	useEvent("message", handleMessage)
@@ -942,7 +965,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 										flex: secondaryButtonText ? 1 : 2,
 										marginRight: secondaryButtonText ? "6px" : "0",
 									}}
-									onClick={() => handlePrimaryButtonClick(inputValue, selectedImages)}>
+									onClick={() => handlePrimaryButtonClick(inputText, selectedImages)}>
 									{primaryButtonText}
 								</VSCodeButton>
 							)}
@@ -954,7 +977,7 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 										flex: isStreaming ? 2 : 1,
 										marginLeft: isStreaming ? 0 : "6px",
 									}}
-									onClick={() => handleSecondaryButtonClick(inputValue, selectedImages)}>
+									onClick={() => handleSecondaryButtonClick(inputText, selectedImages)}>
 									{isStreaming ? "Cancel" : secondaryButtonText}
 								</VSCodeButton>
 							)}
@@ -964,13 +987,22 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 			)}
 			<ChatTextArea
 				ref={textAreaRef}
-				inputValue={inputValue}
-				setInputValue={setInputValue}
+				inputValue={inputText} // Use context state
+				setInputValue={setInputText} // Use context setter
 				textAreaDisabled={textAreaDisabled}
 				placeholderText={placeholderText}
 				selectedImages={selectedImages}
 				setSelectedImages={setSelectedImages}
-				onSend={() => handleSendMessage(inputValue, selectedImages)}
+				onSend={() => {
+					// Use context function for sending
+					sendMessage(inputText, selectedImages)
+					// Reset UI state after sending
+					setTextAreaDisabled(true)
+					setSelectedImages([])
+					setClineAsk(undefined)
+					setEnableButtons(false)
+					disableAutoScrollRef.current = false
+				}}
 				onSelectImages={selectImages}
 				shouldDisableImages={shouldDisableImages}
 				onHeightChange={() => {

@@ -103,3 +103,41 @@ Interactions initiated by an external extension via the `ClineExternalApi` will 
 Updates originating from Cline (like new system messages) would flow:
 
 `Task`/`Controller` -> `ClineExternalApi` -> `onSystemMessageUpdate` Event -> `External Extension`
+
+## Testing Strategy for External API
+
+Testing the external API involves several layers:
+
+1.  **Unit Tests for `ClineExternalApi` (`src/test/suite/api/externalApi.test.ts`):**
+    *   Focus: Verify the API class methods correctly delegate calls to the `Controller` and handle event subscriptions/emissions.
+    *   Mocks: Mock the `Controller` instance entirely using Sinon stubs to isolate the `ClineExternalApi` logic.
+    *   Coverage: Test each API method (`getUserInputText`, `setUserInputText`, etc.) for successful delegation and basic error handling (e.g., when the controller is not set). Test event subscription (`onSystemMessageUpdate`).
+
+2.  **Unit Tests for `Controller` API Methods (`src/test/suite/core/controller.test.ts`):**
+    *   Focus: Verify the new public methods (`handleGetUserInput`, `handleSetUserInput`, etc.) in the `Controller` perform the correct actions (posting messages to webview, interacting with the `Task` instance, managing state).
+    *   Mocks: Mock the `Task` instance, the `postMessage` function, and potentially parts of VS Code context/state management.
+    *   Coverage: Test each handler method for its expected behavior, including interactions with mocks and handling of edge cases (e.g., no active task, pending command logic). Test the `onMessageUpdate` event emission.
+
+3.  **Integration Tests (Manual / Test Extension):**
+    *   Focus: Verify the end-to-end flow from an external extension calling the API through to the Cline UI updating or actions occurring.
+    *   Approach:
+        *   **Manual:** Use the VS Code debugger (`F5`) to launch Cline, then manually use `vscode.extensions.getExtension(...).exports` in the Debug Console to call API methods and observe results.
+        *   **Test Extension:** Create a separate, simple VS Code extension (as outlined in `TASK.MD`, Step 8) that activates Cline and calls its API methods via commands. This provides a more automated way to test the API contract and interaction.
+
+4.  **Webview Interaction Tests:**
+    *   Focus: Ensure the webview (`ExtensionStateContext`, UI components) correctly handles messages sent from the `Controller` (`setUserInput`, `getUserInput`) and sends back responses (`userInputResponse`).
+    *   Approach: This is typically harder to automate within the extension's test suite. Manual testing or potentially using webview-specific testing frameworks (if set up, like Jest/RTL for the React components) would be needed. Mocking `vscode.postMessage` is crucial for webview unit tests.
+
+### Running Unit Tests
+
+The unit tests (Mocha/Chai/Sinon) for the core extension logic, including the new API and Controller tests, can be run using the following command from the project root:
+
+```bash
+npm run test:unit
+```
+
+Alternatively, use the "Extension Tests" launch configuration added to `.vscode/launch.json` to run tests directly within VS Code's debugger.
+
+This command uses `mocha` with the specific `tsconfig.unit-test.json` configuration. Ensure dependencies are installed (`npm install`) before running.
+
+**Note on `toPosix`:** The `String.prototype.toPosix` method was refactored into an exported function `toPosix` in `src/utils/path.ts` to resolve unit test compilation errors. All call sites using `.toPosix()` have been updated to use `toPosix(...)` and import the function. This refactoring was necessary because prototype modifications don't reliably load in the Node.js test environment used by Mocha.

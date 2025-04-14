@@ -123,7 +123,7 @@ export interface WebviewMessage {
 	invoke?: "sendMessage" | "primaryButtonClick" | "secondaryButtonClick"
 }
 
-export type ClineAskResponse = "yesButtonClicked" | "noButtonClicked" | "messageResponse";
+export type ClineAskResponse = "yesButtonClicked" | "noButtonClicked" | "messageResponse"
 
 export type ClineCheckpointRestore = "task" | "workspace" | "taskAndWorkspace"
 

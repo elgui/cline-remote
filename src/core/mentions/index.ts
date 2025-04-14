@@ -11,6 +11,7 @@ import { getLatestTerminalOutput } from "../../integrations/terminal/get-latest-
 import { getCommitInfo } from "../../utils/git"
 import { getWorkingState } from "../../utils/git"
 import { FileContextTracker } from "../context/context-tracking/FileContextTracker"
+import { toPosix } from "../../utils/path"
 
 export function openMention(mention?: string): void {
 	if (!mention) {
@@ -191,7 +192,7 @@ async function getFileOrFolderContent(mentionPath: string, cwd: string): Promise
 									return undefined
 								}
 								const content = await extractTextFromFile(absoluteFilePath)
-								return `<file_content path="${filePath.toPosix()}">\n${content}\n</file_content>`
+								return `<file_content path="${toPosix(filePath)}">\n${content}\n</file_content>`
 							} catch (error) {
 								return undefined
 							}

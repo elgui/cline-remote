@@ -41,12 +41,12 @@ interface ExtensionStateContextType extends ExtensionState {
 	allowCommand: () => void
 }
 
-import type { ClineMessage } from "../../../src/shared/ExtensionMessage"; // Import ClineMessage for typing
+import type { ClineMessage } from "../../../src/shared/ExtensionMessage" // Import ClineMessage for typing
 
-const ExtensionStateContext = createContext<ExtensionStateContextType | undefined>(undefined);
+const ExtensionStateContext = createContext<ExtensionStateContextType | undefined>(undefined)
 
 export const ExtensionStateContextProvider: React.FC<{
-	children: React.ReactNode; // Keep ReactNode type
+	children: React.ReactNode // Keep ReactNode type
 }> = ({ children }) => {
 	const [state, setState] = useState<ExtensionState>({
 		version: "",
@@ -68,10 +68,10 @@ export const ExtensionStateContextProvider: React.FC<{
 	const [openRouterModels, setOpenRouterModels] = useState<Record<string, ModelInfo>>({
 		[openRouterDefaultModelId]: openRouterDefaultModelInfo,
 	})
-	const [totalTasksSize, setTotalTasksSize] = useState<number | null>(null);
-	const [inputText, setInputText] = useState<string>(""); // Add state for input text
+	const [totalTasksSize, setTotalTasksSize] = useState<number | null>(null)
+	const [inputText, setInputText] = useState<string>("") // Add state for input text
 
-	const [openAiModels, setOpenAiModels] = useState<string[]>([]);
+	const [openAiModels, setOpenAiModels] = useState<string[]>([])
 	const [requestyModels, setRequestyModels] = useState<Record<string, ModelInfo>>({
 		[requestyDefaultModelId]: requestyDefaultModelInfo,
 	})
@@ -124,11 +124,12 @@ export const ExtensionStateContextProvider: React.FC<{
 			}
 			case "partialMessage": {
 				const partialMessage = message.partialMessage!
-				setState((prevState: ExtensionState) => { // Add type for prevState
+				setState((prevState: ExtensionState) => {
+					// Add type for prevState
 					// worth noting it will never be possible for a more up-to-date message to be sent here or in normal messages post since the presentAssistantContent function uses lock
-					const lastIndex = findLastIndex(prevState.clineMessages, (msg: ClineMessage) => msg.ts === partialMessage.ts); // Add type for msg
+					const lastIndex = findLastIndex(prevState.clineMessages, (msg: ClineMessage) => msg.ts === partialMessage.ts) // Add type for msg
 					if (lastIndex !== -1) {
-						const newClineMessages = [...prevState.clineMessages];
+						const newClineMessages = [...prevState.clineMessages]
 						newClineMessages[lastIndex] = partialMessage
 						return { ...prevState, clineMessages: newClineMessages }
 					}
@@ -154,22 +155,22 @@ export const ExtensionStateContextProvider: React.FC<{
 				setRequestyModels({
 					[requestyDefaultModelId]: requestyDefaultModelInfo,
 					...updatedModels,
-				});
-				break;
+				})
+				break
 			}
 			case "mcpServers": {
-				setMcpServers(message.mcpServers ?? []);
-				break;
+				setMcpServers(message.mcpServers ?? [])
+				break
 			}
 			// --- New cases for External API ---
 			case "setUserInput": {
-				setInputText(message.value ?? ""); // Update input text state from Controller
-				break;
+				setInputText(message.value ?? "") // Update input text state from Controller
+				break
 			}
 			case "getUserInput": {
 				// Respond to Controller's request for input text
-				vscode.postMessage({ type: "userInputResponse", value: inputText });
-				break;
+				vscode.postMessage({ type: "userInputResponse", value: inputText })
+				break
 			}
 			// --- End New cases ---
 			case "mcpMarketplaceCatalog": {
@@ -204,27 +205,32 @@ export const ExtensionStateContextProvider: React.FC<{
 		filePaths,
 		totalTasksSize,
 		setApiConfiguration: (value) =>
-			setState((prevState: ExtensionState) => ({ // Add type for prevState
+			setState((prevState: ExtensionState) => ({
+				// Add type for prevState
 				...prevState,
 				apiConfiguration: value,
 			})),
 		setCustomInstructions: (value) =>
-			setState((prevState: ExtensionState) => ({ // Add type for prevState
+			setState((prevState: ExtensionState) => ({
+				// Add type for prevState
 				...prevState,
 				customInstructions: value,
 			})),
 		setTelemetrySetting: (value) =>
-			setState((prevState: ExtensionState) => ({ // Add type for prevState
+			setState((prevState: ExtensionState) => ({
+				// Add type for prevState
 				...prevState,
 				telemetrySetting: value,
 			})),
 		setPlanActSeparateModelsSetting: (value) =>
-			setState((prevState: ExtensionState) => ({ // Add type for prevState
+			setState((prevState: ExtensionState) => ({
+				// Add type for prevState
 				...prevState,
 				planActSeparateModelsSetting: value,
 			})),
 		setShowAnnouncement: (value) =>
-			setState((prevState: ExtensionState) => ({ // Add type for prevState
+			setState((prevState: ExtensionState) => ({
+				// Add type for prevState
 				...prevState,
 				shouldShowAnnouncement: value,
 			})),
@@ -232,18 +238,18 @@ export const ExtensionStateContextProvider: React.FC<{
 		inputText,
 		setInputText,
 		sendMessage: (text?: string, images?: string[]) => {
-			const messageToSend = text ?? inputText; // Use provided text or current input state
-			vscode.postMessage({ type: 'invoke', invoke: 'sendMessage', text: messageToSend, images });
-			setInputText(''); // Clear input after sending
+			const messageToSend = text ?? inputText // Use provided text or current input state
+			vscode.postMessage({ type: "invoke", invoke: "sendMessage", text: messageToSend, images })
+			setInputText("") // Clear input after sending
 		},
 		allowCommand: () => {
 			// Assuming 'invoke' with 'primaryButtonClick' is the way to allow commands
 			// Or use a specific message type if defined e.g., { type: 'allowCommand' }
-			vscode.postMessage({ type: 'invoke', invoke: 'primaryButtonClick' });
+			vscode.postMessage({ type: "invoke", invoke: "primaryButtonClick" })
 		},
-	};
+	}
 
-	return <ExtensionStateContext.Provider value={contextValue}>{children}</ExtensionStateContext.Provider>;
+	return <ExtensionStateContext.Provider value={contextValue}>{children}</ExtensionStateContext.Provider>
 }
 
 export const useExtensionState = () => {

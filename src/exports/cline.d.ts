@@ -1,4 +1,4 @@
-import { ClineExternalApi } from "../api/externalApi"; // Import the type
+import { ClineExternalApi } from "../api/externalApi" // Import the type
 
 export interface ClineAPI {
 	/**
@@ -40,5 +40,5 @@ export interface ClineAPI {
 	/**
 	 * Access the external chat interaction API.
 	 */
-	chat: ClineExternalApi;
+	chat: ClineExternalApi
 }

@@ -27,7 +27,12 @@ Observations:
 - Macos isn't so flexible with mixed separators, whereas windows can handle both. ("Node.js does automatically handle path separators on Windows, converting forward slashes to backslashes as needed. However, on macOS and other Unix-like systems, the path separator is always a forward slash (/), and backslashes are treated as regular characters.")
 */
 
-function toPosixPath(p: string) {
+/**
+ * Converts backslashes to forward slashes in a path string, unless it's an extended-length Windows path.
+ * @param p The path string.
+ * @returns The path string with forward slashes.
+ */
+export function toPosix(p: string): string {
 	// Extended-Length Paths in Windows start with "\\?\" to allow longer paths and bypass usual parsing. If detected, we return the path unmodified to maintain functionality, as altering these paths could break their special syntax.
 	const isExtendedLengthPath = p.startsWith("\\\\?\\")
 
@@ -36,18 +41,6 @@ function toPosixPath(p: string) {
 	}
 
 	return p.replace(/\\/g, "/")
-}
-
-// Declaration merging allows us to add a new method to the String type
-// You must import this file in your entry point (extension.ts) to have access at runtime
-declare global {
-	interface String {
-		toPosix(): string
-	}
-}
-
-String.prototype.toPosix = function (this: string): string {
-	return toPosixPath(this)
 }
 
 // Safe path comparison that works across different platforms
@@ -85,18 +78,18 @@ export function getReadablePath(cwd: string, relPath?: string): string {
 	const absolutePath = path.resolve(cwd, relPath)
 	if (arePathsEqual(cwd, path.join(os.homedir(), "Desktop"))) {
 		// User opened vscode without a workspace, so cwd is the Desktop. Show the full absolute path to keep the user aware of where files are being created
-		return absolutePath.toPosix()
+		return toPosix(absolutePath) // Use exported function
 	}
 	if (arePathsEqual(path.normalize(absolutePath), path.normalize(cwd))) {
-		return path.basename(absolutePath).toPosix()
+		return toPosix(path.basename(absolutePath)) // Use exported function
 	} else {
 		// show the relative path to the cwd
 		const normalizedRelPath = path.relative(cwd, absolutePath)
 		if (absolutePath.includes(cwd)) {
-			return normalizedRelPath.toPosix()
+			return toPosix(normalizedRelPath) // Use exported function
 		} else {
 			// we are outside the cwd, so show the absolute path (useful for when cline passes in '../../' for example)
-			return absolutePath.toPosix()
+			return toPosix(absolutePath) // Use exported function
 		}
 	}
 }

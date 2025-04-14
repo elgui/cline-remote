@@ -46,11 +46,11 @@ export interface ExtensionMessage {
 		| "browserConnectionInfo"
 		| "detectedChromePath"
 		| "scrollToSettings"
-	| "browserRelaunchResult"
-	| "relativePathsResponse" // Handles single and multiple path responses
-	| "fileSearchResults"
-	| "getUserInput" // Request from Controller to Webview for current input
-	| "setUserInput" // Request from Controller to Webview to set input
+		| "browserRelaunchResult"
+		| "relativePathsResponse" // Handles single and multiple path responses
+		| "fileSearchResults"
+		| "getUserInput" // Request from Controller to Webview for current input
+		| "setUserInput" // Request from Controller to Webview to set input
 	text?: string
 	value?: string // Used for setUserInput
 	paths?: (string | null)[] // Used for relativePathsResponse

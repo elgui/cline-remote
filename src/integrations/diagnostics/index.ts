@@ -1,6 +1,7 @@
 import * as vscode from "vscode"
 import * as path from "path"
 import deepEqual from "fast-deep-equal"
+import { toPosix } from "../../utils/path"
 
 export function getNewDiagnostics(
 	oldDiagnostics: [vscode.Uri, vscode.Diagnostic[]][],
@@ -79,7 +80,7 @@ export function diagnosticsToProblemsString(
 	for (const [uri, fileDiagnostics] of diagnostics) {
 		const problems = fileDiagnostics.filter((d) => severities.includes(d.severity))
 		if (problems.length > 0) {
-			result += `\n\n${path.relative(cwd, uri.fsPath).toPosix()}`
+			result += `\n\n${toPosix(path.relative(cwd, uri.fsPath))}`
 			for (const diagnostic of problems) {
 				let label: string
 				switch (diagnostic.severity) {

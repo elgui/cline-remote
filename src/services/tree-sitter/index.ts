@@ -4,6 +4,7 @@ import { listFiles } from "../glob/list-files"
 import { LanguageParser, loadRequiredLanguageParsers } from "./languageParser"
 import { fileExistsAtPath } from "../../utils/fs"
 import { ClineIgnoreController } from "../../core/ignore/ClineIgnoreController"
+import { toPosix } from "../../utils/path"
 
 // TODO: implement caching behavior to avoid having to keep analyzing project for new tasks.
 export async function parseSourceCodeForDefinitionsTopLevel(
@@ -35,7 +36,7 @@ export async function parseSourceCodeForDefinitionsTopLevel(
 	for (const filePath of allowedFilesToParse) {
 		const definitions = await parseFile(filePath, languageParsers, clineIgnoreController)
 		if (definitions) {
-			result += `${path.relative(dirPath, filePath).toPosix()}\n${definitions}\n`
+			result += `${toPosix(path.relative(dirPath, filePath))}\n${definitions}\n`
 		}
 		// else {
 		// 	filesWithoutDefinitions.push(file)

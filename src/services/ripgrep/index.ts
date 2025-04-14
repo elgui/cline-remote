@@ -4,6 +4,7 @@ import * as path from "path"
 import * as readline from "readline"
 import { fileExistsAtPath } from "../../utils/fs"
 import { ClineIgnoreController } from "../../core/ignore/ClineIgnoreController"
+import { toPosix } from "../../utils/path"
 
 /*
 This file provides functionality to perform regex searches on files using ripgrep.
@@ -201,7 +202,7 @@ function formatResults(results: SearchResult[], cwd: string): string {
 	})
 
 	for (const [filePath, fileResults] of Object.entries(groupedResults)) {
-		output += `${filePath.toPosix()}\n│----\n`
+		output += `${toPosix(filePath)}\n│----\n`
 
 		fileResults.forEach((result, index) => {
 			const allLines = [...result.beforeContext, result.match, ...result.afterContext]

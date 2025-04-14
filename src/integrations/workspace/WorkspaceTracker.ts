@@ -3,6 +3,7 @@ import * as path from "path"
 import { listFiles } from "../../services/glob/list-files"
 import { Controller } from "../../core/controller"
 import { ExtensionMessage } from "../../shared/ExtensionMessage"
+import { toPosix } from "../../utils/path"
 
 const cwd = vscode.workspace.workspaceFolders?.map((folder) => folder.uri.fsPath).at(0)
 
@@ -88,7 +89,7 @@ class WorkspaceTracker {
 		this.postMessageToWebview({
 			type: "workspaceUpdated",
 			filePaths: Array.from(this.filePaths).map((file) => {
-				const relativePath = path.relative(cwd, file).toPosix()
+				const relativePath = toPosix(path.relative(cwd, file))
 				return file.endsWith("/") ? relativePath + "/" : relativePath
 			}),
 		})

@@ -2,7 +2,7 @@ import * as vscode from "vscode"
 import * as path from "path"
 import * as fs from "fs/promises"
 import { createDirectoriesForFile } from "../../utils/fs"
-import { arePathsEqual } from "../../utils/path"
+import { arePathsEqual, toPosix } from "../../utils/path"
 import { formatResponse } from "../../core/prompts/responses"
 import { DecorationController } from "./DecorationController"
 import * as diff from "diff"
@@ -237,7 +237,7 @@ export class DiffViewProvider {
 		let userEdits: string | undefined
 		if (normalizedPreSaveContent !== normalizedNewContent) {
 			// user made changes before approving edit. let the model know about user made changes (not including post-save auto-formatting changes)
-			userEdits = formatResponse.createPrettyPatch(this.relPath.toPosix(), normalizedNewContent, normalizedPreSaveContent)
+			userEdits = formatResponse.createPrettyPatch(toPosix(this.relPath), normalizedNewContent, normalizedPreSaveContent)
 			// return { newProblemsMessage, userEdits, finalContent: normalizedPostSaveContent }
 		} else {
 			// no changes to cline's edits
@@ -248,7 +248,7 @@ export class DiffViewProvider {
 		if (normalizedPreSaveContent !== normalizedPostSaveContent) {
 			// auto-formatting was done by the editor
 			autoFormattingEdits = formatResponse.createPrettyPatch(
-				this.relPath.toPosix(),
+				toPosix(this.relPath),
 				normalizedPreSaveContent,
 				normalizedPostSaveContent,
 			)

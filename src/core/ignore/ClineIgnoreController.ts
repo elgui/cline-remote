@@ -3,6 +3,7 @@ import { fileExistsAtPath } from "../../utils/fs"
 import fs from "fs/promises"
 import ignore, { Ignore } from "ignore"
 import * as vscode from "vscode"
+import { toPosix } from "../../utils/path"
 
 export const LOCK_TEXT_SYMBOL = "\u{1F512}"
 
@@ -92,7 +93,7 @@ export class ClineIgnoreController {
 		try {
 			// Normalize path to be relative to cwd and use forward slashes
 			const absolutePath = path.resolve(this.cwd, filePath)
-			const relativePath = path.relative(this.cwd, absolutePath).toPosix()
+			const relativePath = toPosix(path.relative(this.cwd, absolutePath))
 
 			// Ignore expects paths to be path.relative()'d
 			return !this.ignoreInstance.ignores(relativePath)
