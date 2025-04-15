@@ -175,25 +175,25 @@ Allow external VSCode extensions to interact with the Cline chat interface.
 -   [x] Create unit test file for Controller API methods: `src/test/suite/core/controller.test.ts`
 -   [x] Create unit test file for API class: `src/test/suite/api/externalApi.test.ts`
 -   [x] Add "Extension Tests" launch configuration to `.vscode/launch.json`.
--   [ ] **NEXT:** Implement detailed unit tests in `controller.test.ts`:
+-   [x] Implement detailed unit tests in `controller.test.ts`: *(Existing tests cover requirements)*
     -   [x] Test `handleGetUserInput` success, timeout, and error cases. *(Existing tests cover this)*
     -   [x] Test `handleSetUserInput` success and error cases (e.g., postMessage unavailable). *(Existing tests cover this)*
     -   [x] Test `handleSendMessage` with and without text argument, including call to `handleSetUserInput`. *(Existing tests cover this)*
     -   [x] Test `handleGetSystemMessages` with various `clineMessages` states (empty, mixed types). *(Existing tests cover this)*
     -   [x] Test `handleAllowCommand` success, no pending command, and no active task cases. *(Existing tests cover this)*
     -   [x] Test `onMessageUpdate` event emission logic within the mocked `Task` callback. *(Added)*
--   [ ] **NEXT:** Implement detailed unit tests in `externalApi.test.ts`:
-    -   [ ] Test `getInstance` returns singleton.
-    -   [ ] Test `setController` correctly sets the internal controller and subscribes to `onMessageUpdate`.
-    -   [ ] Test delegation of each API method (`getUserInputText`, `setUserInputText`, etc.) to the corresponding mocked `Controller` method.
-    -   [ ] Test error handling when the `Controller` is not set or when `Controller` methods throw/reject.
-    -   [ ] Test `onSystemMessageUpdate` event firing when the mocked `Controller` emits a message.
+-   [x] Implement detailed unit tests in `externalApi.test.ts`: *(Existing tests cover requirements)*
+    -   [x] Test `getInstance` returns singleton.
+    -   [x] Test `setController` correctly sets the internal controller and subscribes to `onMessageUpdate`.
+    -   [x] Test delegation of each API method (`getUserInputText`, `setUserInputText`, etc.) to the corresponding mocked `Controller` method.
+    -   [x] Test error handling when the `Controller` is not set or when `Controller` methods throw/reject.
+    -   [x] Test `onSystemMessageUpdate` event firing when the mocked `Controller` emits a message.
 -   [ ] **LATER:** Create a simple separate test VSCode extension project for end-to-end integration testing.
 -   [ ] **LATER:** Add tests for webview message handling (`setUserInput`, `getUserInput` -> `userInputResponse`) if possible (might require manual testing or dedicated webview test setup).
 
 ### 9. Error Handling and Edge Cases
 
--   [ ] **NEXT:** Implement proper error handling in all API methods:
+-   [x] Implement proper error handling in all API methods: *(Refined in Controller)*
     -   [x] Check for missing controller reference *(Added in `ClineExternalApi`)*
     -   [x] Handle cases where no chat is active *(Added basic checks in `Controller` methods)*
     -   [x] Gracefully handle situations where commands can't be allowed *(Added basic checks in `Controller` methods)*
@@ -210,7 +210,7 @@ Allow external VSCode extensions to interact with the Cline chat interface.
 *   **DONE:** Implement the detailed unit tests outlined in step 8 for `externalApi.test.ts`.
 *   **DONE:** Verify webview components in `webview-ui/src/components/...` correctly interact with the updated `ExtensionStateContext` (input field, send button). Command approval uses existing message passing.
 *   **DONE:** Address the remaining TypeScript errors related to missing Node/VSCode/other module types by running `npm install` in `webview-ui/`.
-*   **NEXT:** Refine error handling and edge case management in Controller/API methods (Step 9).
+*   **DONE:** Refine error handling and edge case management in Controller/API methods (Step 9).
 *   **LATER:** Consider creating the separate test extension project for end-to-end testing.
 *   **LATER:** Create an easy way to launch specific test suites (e.g., Core, API, Webview) directly from the VSCode UI (e.g., via commands or status bar items).
 

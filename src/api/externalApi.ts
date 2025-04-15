@@ -74,9 +74,9 @@ export class ClineExternalApi {
 	/**
 	 * Sets the text content of the Cline input field.
 	 * @param text The text to set.
-	 * @returns True if the operation was successfully initiated, false otherwise.
+	 * @returns A promise resolving to true if the operation was successfully initiated, false otherwise.
 	 */
-	public setUserInputText(text: string): boolean {
+	public async setUserInputText(text: string): Promise<boolean> {
 		log("setUserInputText called with:", text)
 		if (!this.controller) {
 			log("Error in setUserInputText: Controller not set")
@@ -84,7 +84,7 @@ export class ClineExternalApi {
 		}
 		try {
 			// Delegate to controller
-			return this.controller.handleSetUserInput(text)
+			return await this.controller.handleSetUserInput(text)
 		} catch (error) {
 			log("Error in setUserInputText:", error) // More specific log
 			return false
@@ -95,9 +95,9 @@ export class ClineExternalApi {
 	 * Sends a message to Cline, optionally setting the input text first.
 	 * If no text is provided, it sends the current content of the input field.
 	 * @param text Optional text to send. If provided, it will overwrite the input field first.
-	 * @returns True if the send operation was successfully initiated, false otherwise.
+	 * @returns A promise resolving to true if the send operation was successfully initiated, false otherwise.
 	 */
-	public sendMessage(text?: string): boolean {
+	public async sendMessage(text?: string): Promise<boolean> {
 		log("sendMessage called with text:", text)
 		if (!this.controller) {
 			log("Error in sendMessage: Controller not set")
@@ -105,7 +105,7 @@ export class ClineExternalApi {
 		}
 		try {
 			// Delegate to controller
-			return this.controller.handleSendMessage(text)
+			return await this.controller.handleSendMessage(text)
 		} catch (error) {
 			log("Error in sendMessage:", error) // More specific log
 			return false

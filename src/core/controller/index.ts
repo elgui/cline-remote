@@ -60,7 +60,7 @@ export class Controller {
 
 	// --- New properties for External API ---
 	private readonly _messageUpdateEmitter = new vscode.EventEmitter<ClineMessage>()
-	private currentInputText: string = "" // To store input text locally if needed (mainly for sendMessage fallback)
+	// private currentInputText: string = "" // Removed: Rely on webview state
 	private userInputRequestResolver: ((value: string | null) => void) | null = null
 	// --- End New properties ---
 
@@ -2178,21 +2178,23 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 	/**
 	 * Handles setting the user input text in the webview.
 	 */
-	public handleSetUserInput(text: string): boolean {
+	public async handleSetUserInput(text: string): Promise<boolean> {
+		// Made async to await postMessage
 		try {
 			if (!this.postMessage) {
 				console.error("[Controller] postMessage function not available for handleSetUserInput.")
 				return false
 			}
 			// Send message to webview to update input
-			this.postMessageToWebview({
+			const success = await this.postMessageToWebview({
+				// Await and check result
 				type: "setUserInput", // Webview needs to handle this type
 				value: text,
 			})
 
 			// Update local state if controller maintains it (optional, mainly for sendMessage fallback)
-			this.currentInputText = text
-			return true
+			// this.currentInputText = text // Removed: Rely on webview state
+			return success ?? false // Return actual success status
 		} catch (error) {
 			console.error("[Controller] Error setting user input:", error)
 			return false
@@ -2202,7 +2204,8 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 	/**
 	 * Handles sending a message, potentially setting input text first.
 	 */
-	public handleSendMessage(text?: string): boolean {
+	public async handleSendMessage(text?: string): Promise<boolean> {
+		// Made async
 		try {
 			if (!this.postMessage) {
 				console.error("[Controller] postMessage function not available for handleSendMessage.")
@@ -2213,35 +2216,30 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 
 			// If text is provided, first set the input
 			if (text !== undefined) {
-				const setResult = this.handleSetUserInput(text)
+				const setResult = await this.handleSetUserInput(text) // Await the result
 				if (!setResult) {
 					console.error("[Controller] Failed to set user input before sending message.")
-					// Decide if we should proceed or return false. Let's proceed for now.
+					return false // Return false if setting input failed
 				}
-				// textToSend is already set
+				textToSend = text // Use the provided text
 			} else {
-				// If no text provided, we will send undefined text to the 'invoke' message.
-				// The webview's sendMessage handler should use its current inputText state.
+				// If no text provided, send undefined. Webview will use its current input.
 				textToSend = undefined
-				// We don't need to rely on this.currentInputText here.
 			}
 
 			// Trigger sending the message by simulating the webview 'invoke' message
 			// Webview's ExtensionStateContext handles 'invoke' -> 'sendMessage'
-			this.postMessageToWebview({
+			const success = await this.postMessageToWebview({
+				// Await and check result
 				type: "invoke",
 				invoke: "sendMessage",
 				text: textToSend, // Send the text intended for the message, or undefined
 				// images: undefined // Assuming API doesn't handle images yet
 			})
 
-			// Clear local cache if text was explicitly provided and set
-			if (text !== undefined) {
-				this.currentInputText = ""
-			}
-			// If text was undefined, we don't clear local cache as we didn't use it.
+			// No need to manage local currentInputText cache
 
-			return true
+			return success ?? false // Return actual success status
 		} catch (error) {
 			console.error("[Controller] Error sending message:", error)
 			return false

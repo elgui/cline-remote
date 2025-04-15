@@ -58,11 +58,13 @@ describe("Controller - External API Methods", () => {
 		;(controller as any).task = undefined // Clean up mock task assignment
 	})
 
-	it('handleSetUserInput should post "setUserInput" message to webview', () => {
+	it('handleSetUserInput should post "setUserInput" message to webview', async () => {
+		// Made async
 		const testText = "Hello from API"
-		const result = controller.handleSetUserInput(testText)
+		postMessageStub.resolves(true) // Configure stub to resolve promise
+		const result = await controller.handleSetUserInput(testText) // Added await
 
-		expect(result).to.be.true
+		expect(result).to.be.true // No await needed here as result is now boolean
 		expect(postMessageStub.calledOnce).to.be.true
 		expect(postMessageStub.firstCall.args[0]).to.deep.equal({
 			type: "setUserInput",
@@ -72,15 +74,18 @@ describe("Controller - External API Methods", () => {
 		// expect((controller as any).currentInputText).to.equal(testText);
 	})
 
-	it('handleSendMessage should post "invoke" message with text', () => {
+	it('handleSendMessage should post "invoke" message with text', async () => {
+		// Made async
 		const testText = "Send this message"
-		// Mock handleSetUserInput to avoid its side effects during this test
-		sinon.stub(controller, "handleSetUserInput").returns(true)
+		// Mock handleSetUserInput to resolve promise as it's now async
+		const setUserInputStub = sinon.stub(controller, "handleSetUserInput").resolves(true)
+		postMessageStub.resolves(true) // Configure postMessage stub to resolve
 
-		const result = controller.handleSendMessage(testText)
+		const result = await controller.handleSendMessage(testText) // Added await
 
-		expect(result).to.be.true
-		expect(postMessageStub.calledOnce).to.be.true // Only invoke message expected
+		expect(result).to.be.true // No await needed here
+		expect(setUserInputStub.calledOnceWith(testText)).to.be.true // Verify handleSetUserInput was called
+		expect(postMessageStub.calledOnce).to.be.true // Verify postMessage was called (for the invoke)
 		expect(postMessageStub.firstCall.args[0]).to.deep.equal({
 			type: "invoke",
 			invoke: "sendMessage",
@@ -88,14 +93,16 @@ describe("Controller - External API Methods", () => {
 		})
 	})
 
-	it('handleSendMessage should post "invoke" message without text if none provided', () => {
+	it('handleSendMessage should post "invoke" message without text if none provided', async () => {
+		// Made async
 		// Set some internal text state if the method relies on it
 		// (controller as any).currentInputText = 'Internal state text';
-		sinon.stub(controller, "handleSetUserInput").returns(true) // Stub this as it's called internally
+		// handleSetUserInput is NOT called when text is undefined, so no need to stub it here.
+		postMessageStub.resolves(true) // Configure postMessage stub to resolve
 
-		const result = controller.handleSendMessage() // No text argument
+		const result = await controller.handleSendMessage() // No text argument, Added await
 
-		expect(result).to.be.true
+		expect(result).to.be.true // No await needed here
 		expect(postMessageStub.calledOnce).to.be.true
 		expect(postMessageStub.firstCall.args[0]).to.deep.equal({
 			type: "invoke",

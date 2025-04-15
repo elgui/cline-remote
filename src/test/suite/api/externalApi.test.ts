@@ -79,31 +79,34 @@ describe("ClineExternalApi", () => {
 		expect(result).to.be.null
 	})
 
-	it("setUserInputText should call controller.handleSetUserInput", () => {
+	it("setUserInputText should call controller.handleSetUserInput", async () => {
+		// Added async
 		const testText = "Setting input"
-		mockController.handleSetUserInput.returns(true)
+		mockController.handleSetUserInput.resolves(true) // Changed to resolves
 
-		const result = apiInstance.setUserInputText(testText)
+		const result = await apiInstance.setUserInputText(testText) // Added await
 
 		expect(mockController.handleSetUserInput.calledOnceWith(testText)).to.be.true
 		expect(result).to.be.true
 	})
 
-	it("setUserInputText should return false if controller call fails", () => {
+	it("setUserInputText should return false if controller call fails", async () => {
+		// Added async
 		const testText = "Setting input"
-		mockController.handleSetUserInput.returns(false) // Simulate controller failure
+		mockController.handleSetUserInput.resolves(false) // Changed to resolves // Simulate controller failure
 
-		const result = apiInstance.setUserInputText(testText)
+		const result = await apiInstance.setUserInputText(testText) // Added await
 
 		expect(mockController.handleSetUserInput.calledOnceWith(testText)).to.be.true
 		expect(result).to.be.false
 	})
 
-	it("sendMessage should call controller.handleSendMessage", () => {
+	it("sendMessage should call controller.handleSendMessage", async () => {
+		// Added async
 		const testText = "Sending message"
-		mockController.handleSendMessage.returns(true)
+		mockController.handleSendMessage.resolves(true) // Changed to resolves
 
-		const result = apiInstance.sendMessage(testText)
+		const result = await apiInstance.sendMessage(testText) // Added await
 
 		expect(mockController.handleSendMessage.calledOnceWith(testText)).to.be.true
 		expect(result).to.be.true
@@ -149,33 +152,37 @@ describe("ClineExternalApi", () => {
 
 	// --- Tests for Controller Method Failures ---
 
-	it("setUserInputText should return false if controller method throws", () => {
+	it("setUserInputText should return false if controller method throws", async () => {
+		// Added async
 		const testText = "Setting input"
-		mockController.handleSetUserInput.throws(new Error("Controller error"))
+		// For async methods that throw, use rejects instead of throws
+		mockController.handleSetUserInput.rejects(new Error("Controller error"))
 
-		const result = apiInstance.setUserInputText(testText)
+		const result = await apiInstance.setUserInputText(testText) // Added await
 
 		expect(mockController.handleSetUserInput.calledOnceWith(testText)).to.be.true
-		expect(result).to.be.false
+		expect(result).to.be.false // API should catch the rejection and return false
 	})
 
-	it("sendMessage should return false if controller method throws", () => {
+	it("sendMessage should return false if controller method throws", async () => {
+		// Added async
 		const testText = "Sending message"
-		mockController.handleSendMessage.throws(new Error("Controller error"))
+		mockController.handleSendMessage.rejects(new Error("Controller error")) // Changed to rejects
 
-		const result = apiInstance.sendMessage(testText)
+		const result = await apiInstance.sendMessage(testText) // Added await
 
 		expect(mockController.handleSendMessage.calledOnceWith(testText)).to.be.true
-		expect(result).to.be.false
+		expect(result).to.be.false // API should catch the rejection and return false
 	})
 
-	it("sendMessage without text should return false if controller method throws", () => {
-		mockController.handleSendMessage.throws(new Error("Controller error"))
+	it("sendMessage without text should return false if controller method throws", async () => {
+		// Added async
+		mockController.handleSendMessage.rejects(new Error("Controller error")) // Changed to rejects
 
-		const result = apiInstance.sendMessage() // No text
+		const result = await apiInstance.sendMessage() // No text, Added await
 
 		expect(mockController.handleSendMessage.calledOnceWith(undefined)).to.be.true
-		expect(result).to.be.false
+		expect(result).to.be.false // API should catch the rejection and return false
 	})
 
 	it("getSystemMessages should return null if controller method throws", () => {
@@ -209,13 +216,15 @@ describe("ClineExternalApi", () => {
 			expect(result).to.be.null
 		})
 
-		it("setUserInputText should return false when controller is not set", () => {
-			const result = apiInstance.setUserInputText("test")
+		it("setUserInputText should return false when controller is not set", async () => {
+			// Added async
+			const result = await apiInstance.setUserInputText("test") // Added await
 			expect(result).to.be.false
 		})
 
-		it("sendMessage should return false when controller is not set", () => {
-			const result = apiInstance.sendMessage("test")
+		it("sendMessage should return false when controller is not set", async () => {
+			// Added async
+			const result = await apiInstance.sendMessage("test") // Added await
 			expect(result).to.be.false
 		})
 
